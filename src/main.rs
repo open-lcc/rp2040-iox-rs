@@ -98,33 +98,36 @@ async fn main(spawner: Spawner) {
 
     let sr = ShiftRegister::new(DualC595ShiftRegister::new(
         Output::new(board_io.serial_pin, Level::Low),
-        Output::new(board_io.shift_register_clock_pin, Level::Low),
         Output::new(board_io.storage_register_clock_pin, Level::Low),
+        Output::new(board_io.shift_register_clock_pin, Level::Low),
     ));
 
+    let mut _srclr: Option<Output<AnyPin>> = None;
     if (board_io.srclr_pin.is_some()) {
-        let _srclr = Output::new(board_io.srclr_pin.unwrap(), Level::High);
+        _srclr = Some(Output::new(board_io.srclr_pin.unwrap(), Level::High));
     }
+    let mut _ng: Option<Output<AnyPin>> = None;
     if (board_io.ng_pin.is_some()) {
-        let _ng = Output::new(board_io.ng_pin.unwrap(), Level::Low);
+        _ng = Some(Output::new(board_io.ng_pin.unwrap(), Level::Low));
     }
 
     let _txs108e_oe = Output::new(board_io.txs0108e_oe_pin, Level::High);
-    let sr_out = crate::iox::binary_output::ShiftRegisterOutputs::new();
+    let sr_out = iox::binary_output::ShiftRegisterOutputs::new();
+    let led = Output::new(board_io.led_pin.unwrap(), Level::Low);
 
-    if (board_io.led_pwm.is_some()) {
+/*    if (board_io.led_pwm.is_some()) {
         let led_pwm = PwmSlice::new(10_000, 20f32, 20f32, board_io.led_pwm.unwrap());
         unwrap!(spawner.spawn(glow_led(led_pwm)));
     }
     if (board_io.cn9_3_pwm.is_some()) {
         let cn9_3_pwm = PwmSlice::new(10_000, 20f32, 20f32, board_io.cn9_3_pwm.unwrap());
         unwrap!(spawner.spawn(glow_cn6(cn9_3_pwm)));
-    }
+    }*/
 
     let mut i2c = board_io.i2c0;
     
-    unwrap!(spawner.spawn(i2c_task(i2c)));
-    unwrap!(spawner.spawn(do_stuff(sr)));
+    //unwrap!(spawner.spawn(i2c_task(i2c)));
+    unwrap!(spawner.spawn(do_stuff(sr, led)));
 
     loop {
         Timer::after_secs(1).await;
@@ -157,22 +160,25 @@ async fn glow_led(mut led: PwmSlice<'static, PWM_CH4>) {
 
 #[embassy_executor::task]
 async fn do_stuff(
-    mut sr: ShiftRegister<'static>
+    mut sr: ShiftRegister<'static>,
+    mut led: Output<'static, AnyPin>,
 ) {
     let mut counter = 0;
     loop {
         counter += 1;
         //log::info!("counter: {}", counter);
-
-        sr.set_output(board_revisions::apec_r0b::shift_register_positions::CN10, true);
+        
+        led.set_low();
+        sr.set_output(board_revisions::apec_r0b::shift_register_positions::JP2_FA7, true);
         sr.flush_then_clear().await;
 
-        Timer::after_millis(200).await;
+        Timer::after_millis(5000).await;
 
-        sr.set_output(board_revisions::apec_r0b::shift_register_positions::CN11, true);
+        led.set_high();
+        sr.set_output(board_revisions::apec_r0b::shift_register_positions::JP2_FA8, true);
         sr.flush_then_clear().await;
 
-        Timer::after_millis(200).await;
+        Timer::after_millis(5000).await;
     }
 }
 

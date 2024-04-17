@@ -66,6 +66,12 @@ impl<'a> ShiftRegister<'a> {
         self.flush().await;
         self.clear();
     }
+    
+    pub(crate) fn set_all_outputs(&mut self, value: bool) {
+        for i in 0..16 {
+            self.set_output(i, value);
+        }
+    }
 
     pub(crate) fn set_output(&mut self, index: usize, value: bool) {
         self.out.set_output(index, value);
